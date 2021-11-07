@@ -1,0 +1,3 @@
+[submodule "telebot"]
+	path = telebot
+	url = git@github.com:indra4837/telebot.git
