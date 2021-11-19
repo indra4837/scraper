@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telebot-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telebot
+  template:
+    metadata:
+      labels:
+        app: telebot
+    spec:
+      containers:
+        - name: telebot
+          image: kurkur14/telebot
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telebot-srv
+spec:
+  selector:
+    app: telebot
+  ports:
+    - name: telebot
+      protocol: TCP
+      port: 3000
+      targetPort: 3000

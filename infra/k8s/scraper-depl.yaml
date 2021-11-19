@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scraper
+  template:
+    metadata:
+      labels:
+        app: scraper
+    spec:
+      containers:
+        - name: scraper
+          image: kurkur14/scraper
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scraper-srv
+spec:
+  selector:
+    app: scraper
+  ports:
+    - name: scraper
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
