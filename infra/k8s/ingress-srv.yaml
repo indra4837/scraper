@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-service
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+    - host: footex.dev
+      http:
+        paths:
+          - path: /api/webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: scraper-srv
+                port:
+                  number: 5000
+          - path: /api/ping
+            pathType: Prefix
+            backend:
+              service:
+                name: scraper-srv
+                port:
+                  number: 5000
+          - path: /api/webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: telebot-srv
+                port:
+                  number: 3000
+          - path: /api/ping
+            pathType: Prefix
+            backend:
+              service:
+                name: telebot-srv
+                port:
+                  number: 3000

@@ -1,0 +1,26 @@
+apiVersion: skaffold/v2alpha3
+kind: Config
+deploy:
+  kubectl:
+    manifests:
+      - ./infra/k8s/*
+build:
+  local:
+    push: false
+  artifacts:
+    - image: kurkur14/scraper
+      context: scraper
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: "**.py"
+            dest: .
+    - image: kurkur14/telebot
+      context: telebot
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: "**.py"
+            dest: .
