@@ -1,5 +1,6 @@
 from asyncio import format_helpers
 import os
+from tabnanny import check
 import requests
 import json
 from datetime import datetime, timedelta
@@ -12,6 +13,19 @@ from base64 import b64encode
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from decouple import config
+
+
+class color:
+    PURPLE = "\033[95m"
+    CYAN = "\033[96m"
+    DARKCYAN = "\033[36m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    END = "\033[0;0m"
 
 
 class ActiveSG:
@@ -136,17 +150,19 @@ class ActiveSG:
                 available = True
 
                 # only append space if there is another timeslot in the string
-                timeslots = (
-                    timeslots + " " + start_time
-                    if len(timeslots) == 0
-                    else timeslots + start_time
-                )
+                if len(timeslots) == 0:
+                    timeslots = timeslots + start_time
+                else:
+                    timeslots = timeslots + " " + start_time
 
             if available:
                 data[date] = timeslots
 
             # reset available flag to false for next iteration
             available = False
+
+            # reset timeslots for other dates
+            timeslots = ""
 
         message = ""
 
@@ -170,19 +186,20 @@ class ActiveSG:
     def run(self):
         """Run the program"""
 
+        self.signin()
+
         # Futsal at PR Recre Center
         activity_id = 207
         venue_id = 540
         period = 14
         time = int(datetime.now().timestamp())
 
-        for i in range(1, period + 1):
+        for i in range(1, period):
             checked_date = datetime.now() + timedelta(days=i)
             checked_date = checked_date.strftime("%Y-%m-%d")
 
-        self.check_slots(
-            activity_id=activity_id, venue_id=venue_id, date=checked_date, time=time
-        )
+            self.check_slots(activity_id, venue_id, str(checked_date), time)
+
         self.update_user()
 
     def scheduled_run(self):
@@ -196,11 +213,11 @@ class ActiveSG:
         """Use this when testing"""
         self.signin()
 
-        self.check_slots("207", "540", "2022-02-26", "1645632000")
+        self.check_slots(207, 540, "2022-03-10", 1645816142)
         # print(self.slots)
-        self.update_user()
+        self.run()
 
 
 if __name__ == "__main__":
     futsal = ActiveSG()
-    futsal.test()
+    futsal.run()
