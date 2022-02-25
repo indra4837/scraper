@@ -1,3 +1,4 @@
+from asyncio import format_helpers
 import os
 import requests
 import json
@@ -12,17 +13,6 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from decouple import config
 
-from flask import Flask
-from flask_classful import FlaskView, route
-
-
-CHECK_TEXT = "There are no available slots for your preferred date."
-
-# TELEBOT_URL = config("TELEBOT_URL")
-TELEBOT_URL = "http://telebot-srv:3000"
-
-app = Flask(__name__)
-
 
 class ActiveSG:
     def __init__(self) -> None:
@@ -32,9 +22,12 @@ class ActiveSG:
                 "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36"
             }
         )
+        self.token_cr = config("TOKEN_CR")
         self._get_creds()
 
         self.slots = defaultdict(list)
+        self.chat_id = set()
+        self.get_user_chat()
 
     def _get_creds(self):
         """Get credentials from .env file"""
@@ -112,6 +105,68 @@ class ActiveSG:
         else:
             print(f"Unsuccessful response, status {r.status_code}")
 
+        self.renew_cookies()
+
+    def get_user_chat(self):
+        """Get all user chat id"""
+
+        print(f"https://api.telegram.org/bot{self.token_cr}/getUpdates")
+
+        response = requests.get(
+            f"https://api.telegram.org/bot{self.token_cr}/getUpdates"
+        )
+
+        for i in response.json()["result"]:
+            self.chat_id.add(i["message"]["chat"]["id"])
+
+    def update_user(self):
+        """POST request to update user using Telegram Bot"""
+
+        # 02-02-2022: [1000, 1200], 03-02-2022: [0900, 1100]
+        # Date: [StartTime, StartTime]
+        data = {}
+
+        available = False
+
+        # available timeslots will be in following format: 1000 1200 1800
+        timeslots = ""
+
+        for date, slots in self.slots.items():
+            for start_time, _ in slots:
+                available = True
+
+                # only append space if there is another timeslot in the string
+                timeslots = (
+                    timeslots + " " + start_time
+                    if len(timeslots) == 0
+                    else timeslots + start_time
+                )
+
+            if available:
+                data[date] = timeslots
+
+            # reset available flag to false for next iteration
+            available = False
+
+        message = ""
+
+        # formulate text message
+        for date, time in data.items():
+            # message is empty
+            if len(message) == 0:
+                message = message + f"{date}: {time}"
+                continue
+            message = message + "\n" + f"{date}: {time}"
+
+        for id in self.chat_id:
+            requests.post(
+                f"https://api.telegram.org/bot{self.token_cr}/sendMessage",
+                params={
+                    "chat_id": str(id),
+                    "text": f"{message}",
+                },
+            )
+
     def run(self):
         """Run the program"""
 
@@ -128,6 +183,7 @@ class ActiveSG:
         self.check_slots(
             activity_id=activity_id, venue_id=venue_id, date=checked_date, time=time
         )
+        self.update_user()
 
     def scheduled_run(self):
         """Run background scheduler"""
@@ -140,46 +196,11 @@ class ActiveSG:
         """Use this when testing"""
         self.signin()
 
-        self.check_slots("207", "540", "2022-02-28", "1645632000")
-        print(self.slots)
-
-
-class FlaskApp(FlaskView):
-    route_prefix = "/api/"
-
-    @route("ping", methods=["GET"])
-    def ping():
-        return "scraper is running"
-
-    @route("webhook", methods=["POST"])
-    def post(location, date, time, available, booking_url=""):
-        url = os.path.join(TELEBOT_URL, "api/webhook")
-
-        headers = {"Content-Type": "application/json"}
-
-        if available:
-            message = f"There are slots available for {location}!! \U0001F973"
-        else:
-            message = "No slots available \U0001F614"
-
-        data = {
-            "date": str(datetime.date.today),
-            "location": location,
-            "time": time,
-            "message": message,
-        }
-
-        if len(booking_url) > 0:
-            data["url"] = booking_url
-
-        response = requests.post(url, data=json.dumps(data), headers=headers)
-        print(response)
-        return "", 201
+        self.check_slots("207", "540", "2022-02-26", "1645632000")
+        # print(self.slots)
+        self.update_user()
 
 
 if __name__ == "__main__":
     futsal = ActiveSG()
     futsal.test()
-
-    FlaskApp.register(app)
-    app.run()
