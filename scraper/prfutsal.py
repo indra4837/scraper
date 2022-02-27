@@ -205,7 +205,7 @@ class ActiveSG:
     def scheduled_run(self):
         """Run background scheduler"""
 
-        sched = BackgroundScheduler(daemon=True)
+        sched = BackgroundScheduler(daemon=True, timezone="Europe/Berlin")
         sched.add_job(self.run, "interval", seconds=10)
         sched.start()
 
